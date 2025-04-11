@@ -1,0 +1,20 @@
+{
+  "name": "movie-database-prisma",
+  "version": "1.0.0",
+  "description": "npm init -y\r npm i typescript \r npx tsc --init",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx tsc -b && node ./dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "prisma": "^6.6.0"
+  }
+}
