@@ -1,14 +1,15 @@
 import {PrismaClient} from "@prisma/client"
-
+import  express  from "express"
+import authRouter from "./routes/auth.route"
 const prisma = new PrismaClient()
 
-async function main() {
-  const allUsers = await prisma.user.findMany()
-  console.log(allUsers)
-}
+const app = express()
+app.use(express.json())
 
-main()
-  .catch(e => console.error(e))
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+
+app.use("/auth", authRouter)
+
+app.listen(3000, () =>{
+    console.log("Server is running on port 3000")
+    console.log("Database is connected")
+})

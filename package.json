@@ -12,7 +12,13 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.6.0",
-    "typescript": "^5.8.3"
+    "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.9",
+    "bcryptjs": "^3.0.2",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "typescript": "^5.8.3",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "prisma": "^6.6.0"
