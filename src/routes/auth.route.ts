@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { Auth } from "../middleware/auth.middleware";
-import { userLogin } from "../controllers/users.auth";
+import { userLogin, userRegister } from "../controllers/users.auth";
 
 
 const authRouter = Router();
 
-authRouter.post("/login", Auth , userLogin)
+authRouter.post("/signin", Auth , userLogin)
+authRouter.post("/signup", Auth , userRegister)
 
 
 

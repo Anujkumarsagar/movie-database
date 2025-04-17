@@ -1,6 +1,7 @@
+import { NextFunction, Request, Response } from "express";
 import { z } from "zod"
 
-export function Auth(req: any, res: any, next: any) {
+export function Auth(req: Request, res: Response, next: NextFunction) {
     try {
         req.body.username = z.string().min(3).max(20).parse(req.body.username)
         req.body.email = z.string().email().parse(req.body.email)
@@ -8,11 +9,9 @@ export function Auth(req: any, res: any, next: any) {
 
         next();
     } catch (error) {
-        console.log("error is this", error)
-        return res.status(500).json({
-            status: false,
-            messgage: "Internal server error",
-            error: error
+        res.status(500).json({
+            message:"eror in the auth middleware",
+            eror: error
         })
 
     }

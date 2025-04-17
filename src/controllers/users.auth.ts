@@ -8,15 +8,12 @@ import {z} from "zod"
 const client = new PrismaClient()
 
 
-export async function userLogin({ req, res }: { req: Request, res: Response }) : Promise<any> {
+export async function userLogin(req :Request, res : Response) : Promise<any> {
 
     try {
-        const username = z.string().min(3).max(20).parse(req.body.username)
-        const email = z.string().email().parse(req.body.email)
-        const password = z.string().min(6).max(20).parse(req.body.password)
-
-        const hashedPassword = await bcrypt.hash(password, 10)
-
+        const username = req.body.username
+        const email = req.body.email
+        const password = req.body.password
         // find user by username
         const user = await client.users.findUnique({
             where: {
@@ -45,7 +42,7 @@ export async function userLogin({ req, res }: { req: Request, res: Response }) :
         }
 
         //jwt token generate
-        const token = await Jwt.sign({
+        const token = Jwt.sign({
             id: user.id,
             username: user.username,
 
@@ -82,10 +79,11 @@ export async function userLogin({ req, res }: { req: Request, res: Response }) :
 }
 
 
-export async function userRegister({ req, res }: { req: Request, res: Response }) {
+export async function userRegister(req : Request , res : Response) : Promise<any> {
 
     try {
 
+        console.log("the req is: ",req)
         const username = req.body.username;
         const email = req.body.email;
         const password = req.body.password;
@@ -99,6 +97,8 @@ export async function userRegister({ req, res }: { req: Request, res: Response }
                 email: email
             }
         })
+
+        console.log("user is: ", user)
 
         if (user) {
             // userLogin({ req, res })
@@ -120,7 +120,7 @@ export async function userRegister({ req, res }: { req: Request, res: Response }
         })
 
         // jwt token generate 
-        const token = await Jwt.sign({
+        const token = Jwt.sign({
             id: newUser.id,
             username: newUser.username,
             email: newUser.email,
