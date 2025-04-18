@@ -15,77 +15,91 @@
 // response: Array of movie objects (movie_id, title, release_date, rating, etc.)
 // notes: Use indexed fields for filtering; cache results for popular queries.
 
-import { PrismaClient } from "@prisma/client";
-import { RequiredExtensionArgs } from "@prisma/client/runtime/library";
+import { client, redis } from "../utils/client.prisma";
 import { Request, Response } from "express";
-const client = new PrismaClient()
 
 
-export function getAllMovies(req: Request, res: Response) {
+
+export async function getAllMovies(req: Request, res: Response) {
     try {
-
-        const response = client.movies.findMany({
-            orderBy: {
-                id: 'asc',
-            },
-        })
-
-        console.log(response)
-
-        if (response.length <= 0) {
-            return res.status(404).json({
-                message: " movies are less than 0"
-            })
-        }
-
-        return res.status(200).json({
-            message: " movies fetched successfully",
-            data: response
-        })
-
-    } catch (error) {
-        return res.status(500).json({
-            message: "error in fetching all movies" // corrected the typo here
-        })
-    }
-}
-
-
-export function getLimitedMovies(req: Request, res: Response) {
-    try {
-        const { page = 1, limit = 20 } = req.query; // default values
-
-        const movies = client.movies.findMany({
-            skip: (Number(page) - 1) * Number(limit),
-            take: Number(limit),
+        const response = await client.movies.findMany({
             orderBy: {
                 id: 'asc',
             },
         });
 
-        if (movies.length <= 0) {
+        if (!response.length) {
             return res.status(404).json({
                 message: "No movies found",
-                status: false
-            })
+                status: false,
+            });
         }
 
         return res.status(200).json({
             message: "Movies fetched successfully",
-            data: movies,
-            status: true
+            data: response,
+            status: true,
         });
 
     } catch (error) {
-
+        console.error("Error fetching all movies:", error);
         return res.status(500).json({
+            message: "Error in fetching all movies",
             status: false,
-            message: "Error in fetching movies"
-            error: error
-        })
+        });
     }
 }
 
+
+
+export async function getLimitedMovies(req: Request, res: Response) {
+    try {
+      const pageNum = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limitNum = Math.min(100, parseInt(req.query.limit as string) || 20);
+      const skip = (pageNum - 1) * limitNum;
+  
+      const cacheKey = `movies_page_${pageNum}_limit_${limitNum}`;
+      const cached = await redis.get(cacheKey);
+  
+      if (cached) {
+        return res.status(200).json({
+          message: "Movies fetched from cache",
+          data: JSON.parse(cached),
+          status: true,
+        });
+      }
+  
+      const movies = await client.movies.findMany({
+        skip,
+        take: limitNum,
+        orderBy: { id: 'asc' },
+      });
+  
+      if (!movies.length) {
+        return res.status(404).json({
+          message: "No movies found",
+          status: false,
+        });
+      }
+  
+      await redis.set(cacheKey, JSON.stringify(movies), 'EX', 60 * 60);
+  
+      return res.status(200).json({
+        message: "Movies fetched successfully",
+        data: movies,
+        status: true,
+      });
+
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({
+        status: false,
+        message: "Error in fetching movies",
+        error,
+      });
+    }
+  }
+  
 
 
 
@@ -97,10 +111,25 @@ export function getLimitedMovies(req: Request, res: Response) {
 // response: Movie object with related genres, actors, directors
 // notes: Join with movie_genres, movie_actors, movie_directors; cache response.
 
-export function getMovieId(req: Request, res: Response) {
+export async function getMovieId(req: Request, res: Response) {
     try {
-        const { movie_id } = req.params
+        const movie_id = req.params
+        if (!movie_id) {
+            res.status(400).json({
+                message: "movie id is required",
+                status: false
+            })
+        }
+        const cacheKey = `movie_${movie_id}`
+        const cached = await redis.get(cacheKey)
 
+        if (cached) {
+            return res.status(200).json({
+                message: "Movie fetched from cache",
+                data: JSON.parse(cached),
+                status: true,
+            })
+        }
         const response = client.movies.findUnique({
             where: {
                 id: Number(movie_id)
@@ -108,19 +137,19 @@ export function getMovieId(req: Request, res: Response) {
         })
 
         if (!response) {
-            return res.status(404).json({
+            res.status(404).json({
                 message: "Movie not found",
             })
         }
-
-        return res.status(200).json({
+        await redis.set(cacheKey, JSON.stringify(response), 'EX', 60 * 60)
+        res.status(200).json({
             message: "Movie fetched successfully",
             data: response,
             status: true
         })
 
     } catch (error) {
-        return res.status(500).json({
+        res.status(500).json({
             message: "Error in fetching movie",
             error: error,
             status: false
@@ -162,3 +191,46 @@ export function getMovieId(req: Request, res: Response) {
 //   movie_id: Integer
 // response: Success message
 // notes: Cascades to movie_genres, movie_actors, movie_directors, ratings, watchlist.
+
+export async function deleteMovies(req: Request, res: Response) {
+    try {
+        const { movie_id } = req.params
+        if (!movie_id) {
+            res.status(400).json({
+                message: "movie id is required",
+                status: false
+            })
+        }
+
+        const cacheKey = `movie_${movie_id}`
+        const cached = await redis.get(cacheKey)
+
+        if (cached) {
+            await redis.del(cacheKey)
+        }
+        const response = await client.movies.delete({
+            where: {
+                id: Number(movie_id)
+            }
+        })
+        
+        if (!response) {
+           return  res.status(404).json({
+                message: "movie not found",
+                status: false
+            })
+        }
+
+        res.status(200).json({
+            message: "movie deleted successfully",
+            data: response,
+            status: true
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            message: "error in deleting movies",
+            error: error
+        })
+    }
+}
