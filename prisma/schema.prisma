@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Movies Table
+model Movies {
+  id           Int       @id @default(autoincrement())
+  title        String
+  release_date DateTime?
+  duration     Int
+  description  String?
+  language     String?
+  country      String?
+  poster       String?   @map("poster_url")
+  trailer      String?   @map("trailer_url")
+  streaming    String    @map("streaming_url")
+  rating       Decimal   @db.Decimal(3, 1)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  genre        movie_genre[]
+  movie_actors movie_actors[]
+  directors    directors[]
+  watcher      Users[]        @relation("Watchlist")
+  rating_rel   rating[]       @relation("MovieRatings")
+}
+
+// Genre Table
+model Genre {
+  id     Int           @id @default(autoincrement())
+  name   String        @unique
+  movies movie_genre[]
+}
+
+// MovieGenre Table
+model movie_genre {
+  id       Int @id @default(autoincrement())
+  movie_id Int
+  genre_id Int
+
+  Movies Movies @relation(fields: [movie_id], references: [id])
+  Genre  Genre  @relation(fields: [genre_id], references: [id])
+}
+
+// Actor Table
+model actors {
+  id           Int            @id @default(autoincrement())
+  first_name   String
+  last_name    String
+  birth_date   DateTime?
+  bio          String
+  movie_actors movie_actors[]
+}
+
+// MovieActors Junction Table
+model movie_actors {
+  id       Int @id @default(autoincrement())
+  movie_id Int
+  actor_id Int
+
+  Movies Movies @relation(fields: [movie_id], references: [id])
+  actors actors @relation(fields: [actor_id], references: [id])
+}
+
+// Director Table
+model directors {
+  id         Int       @id @default(autoincrement())
+  first_name String
+  last_name  String
+  birth_date DateTime?
+  bio        String
+  Movies     Movies[]
+}
+
+enum UserRole {
+  admin
+  user
+}
+
+// User Table
+model Users {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  email      String   @unique
+  password   String
+  role       UserRole @default(user)
+  created_at DateTime @default(now())
+  movies     Movies[] @relation("Watchlist")
+  rating     rating[] @relation("UserRatings")
+}
+
+// Rating Table
+model rating {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  movie_id   Int
+  rating     Int
+  review     String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users  Users  @relation("UserRatings", fields: [user_id], references: [id])
+  Movies Movies @relation("MovieRatings", fields: [movie_id], references: [id])
+
+  @@unique([user_id, movie_id]) // one rating per user per movie
+}
