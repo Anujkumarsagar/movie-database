@@ -1,4 +1,3 @@
-
 // # Genres Routes
 // - path: /genres
 //   method: GET
@@ -12,30 +11,29 @@
 import { Request, Response } from "express";
 import { client, redis } from "../utils/client.prisma";
 
-
+// Retrieve a list of genres
 export async function getGenres(req: Request, res: Response) {
     try {
-
-        const pageNum = Math.max(1, parseInt(req.query.page as string) || 1)
+        const pageNum = Math.max(1, parseInt(req.query.page as string) || 1);
         const limitNum = Math.min(100, parseInt(req.query.limit as string) || 20);
         const skip = (pageNum - 1) * limitNum;
 
-        const cacheKey = `genre_page_${pageNum}_limit_${limitNum}`;
-        const cached = await redis.get(cacheKey)
+        const cacheKey = `genres_page_${pageNum}_limit_${limitNum}`;
+        const cachedGenres = await redis.get(cacheKey);
 
-        if (cached) {
+        if (cachedGenres) {
             return res.status(200).json({
-                message: "genres fetched from cache",
+                message: "Genres fetched successfully (from cache)",
+                data: JSON.parse(cachedGenres),
                 status: true,
-                data: JSON.parse(cached)
-            })
+            });
         }
 
         const response = await client.genre.findMany({
             skip,
             take: limitNum,
-            orderBy: { id: 'asc' }
-        })
+            orderBy: { id: 'asc' },
+        });
 
         if (!response.length) {
             return res.status(404).json({
@@ -44,80 +42,79 @@ export async function getGenres(req: Request, res: Response) {
             });
         }
 
-        await redis.set(cacheKey, JSON.stringify(response), 'EX', 60 * 60);
+        // Cache the result
+        await redis.set(cacheKey, JSON.stringify(response), "EX", 60 * 60); // Cache for 1 hour
 
         return res.status(200).json({
-            message: "Geners fetched successfully",
+            message: "Genres fetched successfully",
             data: response,
             status: true,
         });
 
     } catch (error) {
-        res.status(500).json({
-            message: "error in get Genres",
-            error: error
-        })
+        console.error("Error in fetching genres:", error);
+        return res.status(500).json({
+            message: "Error in fetching genres",
+            error: error,
+            status: false,
+        });
     }
 }
 
-// - path: /genres/:genre_id
-//   method: GET
-//   description: Retrieve a specific genre
-//   params:
-//     genre_id: Integer
-//   response: Genre object
-//   notes: Cache response.
-
-export async function getMovieId(req: Request, res: Response): Promise<any> {
+// Retrieve a specific genre
+export async function getGenreById(req: Request, res: Response): Promise<any> {
     try {
-        const genre_id = req.params.genre_id
+        const genre_id = req.params.genre_id;
 
         if (!genre_id) {
-            res.status(400).json({
-                message: "movie id is required",
-                status: false
-            })
+            return res.status(400).json({
+                message: "Genre ID is required",
+                status: false,
+            });
         }
-        const cacheKey = `genre_${genre_id}`
-        const cached = await redis.get(cacheKey)
 
-        if (cached) {
+        const cacheKey = `genre_${genre_id}`;
+        const cachedGenre = await redis.get(cacheKey);
+
+        if (cachedGenre) {
             return res.status(200).json({
-                message: "genre fetched from cache",
-                data: JSON.parse(cached),
+                message: "Genre fetched successfully (from cache)",
+                data: JSON.parse(cachedGenre),
                 status: true,
-            })
+            });
         }
-        const response = client.genre.findUnique({
+
+        const response = await client.genre.findUnique({
             where: {
-                id: Number(genre_id)
-            }
-        })
+                id: Number(genre_id),
+            },
+        });
 
         if (!response) {
-            res.status(404).json({
-                message: "genre not found",
-            })
+            return res.status(404).json({
+                message: "Genre not found",
+                status: false,
+            });
         }
-        await redis.set(cacheKey, JSON.stringify(response), 'EX', 60 * 60)
 
-        res.status(200).json({
+        // Cache the result
+        await redis.set(cacheKey, JSON.stringify(response), "EX", 60 * 60); // Cache for 1 hour
+
+        return res.status(200).json({
             message: "Genre fetched successfully",
             data: response,
-            status: true
-        })
+            status: true,
+        });
 
     } catch (error) {
-        res.status(500).json({
-            message: "Error in fetching Genre",
+        console.error("Error in fetching genre:", error);
+        return res.status(500).json({
+            message: "Error in fetching genre",
             error: error,
-            status: false
-        })
-
+            status: false,
+        });
     }
 }
-
-
 
 // - path: /genres
 //   method: POST
@@ -137,56 +134,47 @@ export async function getMovieId(req: Request, res: Response): Promise<any> {
 //   response: Updated genre object
 //   notes: Invalidate cache.
 
-
-
-
-// - path: /genres/:genre_id
-//   method: DELETE
-//   description: Delete a genre (admin only)
-//   params:
-//     genre_id: Integer
-//   response: Success message
-//   notes: Cascades to movie_genres.
-
-export async function deleteGenre(req: Request, res: Response) : Promise<any>{
+// Delete a genre
+export async function deleteGenre(req: Request, res: Response): Promise<any> {
     try {
-        const { genre_id } = req.params
+        const { genre_id } = req.params;
+
         if (!genre_id) {
-            res.status(400).json({
-                message: "genre id is required",
-                status: false
-            })
+            return res.status(400).json({
+                message: "Genre ID is required",
+                status: false,
+            });
         }
 
-        const cacheKey = `genre_${genre_id}`
-        const cached = await redis.get(cacheKey)
+        // Invalidate cache for this genre
+        const cacheKey = `genre_${genre_id}`;
+        await redis.del(cacheKey);
 
-        if (cached) {
-            await redis.del(cacheKey)
-        }
         const response = await client.genre.delete({
             where: {
-                id: Number(genre_id)
-            }
-        })
-        
+                id: Number(genre_id),
+            },
+        });
+
         if (!response) {
-           return  res.status(404).json({
-                message: "genre not found",
-                status: false
-            })
+            return res.status(404).json({
+                message: "Genre not found",
+                status: false,
+            });
         }
 
-        res.status(200).json({
-            message: "genre deleted successfully",
+        return res.status(200).json({
+            message: "Genre deleted successfully",
             data: response,
-            status: true
-        })
+            status: true,
+        });
 
     } catch (error) {
-        res.status(500).json({
-            message: "error in deleting genre",
-            error: error
-        })
+        console.error("Error in deleting genre:", error);
+        return res.status(500).json({
+            message: "Error in deleting genre",
+            error: error,
+            status: false,
+        });
     }
 }
