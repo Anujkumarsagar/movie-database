@@ -6,10 +6,10 @@ export const redis = new Redis({
   host: process.env.REDIS_HOST || '127.0.0.1',
   port: Number(process.env.REDIS_PORT) || 6379,
   password: process.env.REDIS_PASSWORD || undefined,
-  username: process.env.REDIS_USERNAME || undefined,
   db: Number(process.env.REDIS_DB) || 0,
+  // autoResubscribe: true,
   tls: process.env.REDIS_TLS === 'true' ? {} : undefined, // Enable TLS if specified
-});
+})
 
 // Log Redis connection status
 redis.on('connect', () => {
@@ -21,7 +21,7 @@ redis.on('error', (err) => {
 
 // Initialize Prisma Client with logging for development
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log: process.env.NODE_ENV === 'production' ? ['query', 'error', 'warn'] : ['error'],
 });
 
 // Ensure Prisma Client is a singleton in development to avoid multiple instances

@@ -4,7 +4,8 @@
   "description": "npm init -y\r npm i typescript \r npx tsc --init",
   "main": "index.js",
   "scripts": {
-    "dev": "npx tsc -b && node ./dist/index.js"
+    "dev": "npx tsc -b && node ./dist/index.js",
+    "db:deploy": "npx prisma migrate deploy && npx prisma generate"
   },
   "keywords": [],
   "author": "",

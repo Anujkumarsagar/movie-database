@@ -18,6 +18,7 @@
 
 import { Request, Response } from "express";
 import { client, redis } from "../utils/client.prisma";
+import { getNewMoviesFromTMDB, Movie } from "../services/geminiService";
 
 // Retrieve a list of movies with pagination, filtering, and sorting
 export const getAllMovies = async (req: Request, res: Response): Promise<any> => {
@@ -256,6 +257,36 @@ export async function deleteMovies(req: Request, res: Response): Promise<any> {
         return res.status(500).json({
             message: "Error in deleting movie",
             error,
+            status: false,
+        });
+    }
+}
+
+
+export async function getNewMoviesFromTMDBController(req: Request, res: Response): Promise<any> {
+    try {
+        const response = await getNewMoviesFromTMDB();
+
+        console.log(response, "\n", "------------------------");
+
+        if (!response) {
+            return res.status(404).json({
+                message: "No movies found",
+                status: false,
+            });
+        }
+
+        return res.status(200).json({
+            message: "Movies fetched successfully",
+            data: response,
+            status: true,
+        });
+
+        
+    } catch (error) {
+        console.error("Error in fetching movies:", error);
+        return res.status(500).json({
+            message: "Error in fetching movies",
             status: false,
         });
     }

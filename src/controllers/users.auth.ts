@@ -1,12 +1,10 @@
-// all  functions in this file are used to authenticate users
 
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
 import Jwt from "jsonwebtoken";
 import { z } from "zod";
+import { client } from "../utils/client.prisma";
 
-const client = new PrismaClient();
 
 // Schema validation using zod
 const userSchema = z.object({
@@ -122,13 +120,13 @@ export async function userRegister(req: Request, res: Response): Promise<any> {
                 username,
                 email,
                 password: hashedPassword,
-                role: "user", // Default role is "user"
+                role: "user" , 
             },
         });
 
         // Generate JWT token
         const token = Jwt.sign(
-            { id: newUser.id, username: newUser.username, email: newUser.email },
+            { id: newUser.id, username: newUser.username, email: newUser.email , role: newUser.role},
             process.env.JWT_SECRET as string,
             { expiresIn: "48h" }
         );

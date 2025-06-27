@@ -1,8 +1,6 @@
-import {PrismaClient} from "@prisma/client"
 import  express  from "express"
 import authRouter from "./routes/auth.route"
 import movie_router from "./routes/movie.route"
-const prisma = new PrismaClient()
 
 const app = express()
 app.use(express.json())
