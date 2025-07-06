@@ -1,27 +1,55 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import axios, { AxiosHeaders } from 'axios';
 import dotenv from 'dotenv';
+import { redis } from '../utils/client.prisma';
 
 dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
+export const GENRE_ID_TO_NAME: Record<number, string> = {
+  28: "Action",
+  12: "Adventure",
+  16: "Animation",
+  35: "Comedy",
+  80: "Crime",
+  99: "Documentary",
+  18: "Drama",
+  10751: "Family",
+  14: "Fantasy",
+  36: "History",
+  27: "Horror",
+  10402: "Music",
+  9648: "Mystery",
+  10749: "Romance",
+  878: "Science Fiction",
+  10770: "TV Movie",
+  53: "Thriller",
+  10752: "War",
+  37: "Western"
+  // Add more as needed
+};
+
 export interface Movie {
     title: string;
     release_date: string;
-    duration: number;
+    duration: number | undefined;
     description: string;
     language: string;
     country: string;
     poster: string;
     trailer: string;
     streaming: string | null;
-    rating: number;
+    rating: number | undefined;
     created_at: Date;
     updated_at: Date;
     genre: string[] | null;
     movie_actors: string[];
     directors: string[];
+    audience_reaction: string;
+    rating_review: string;
+    rating_rel: any | undefined;
+    genres: string[];
 }
 
 interface Review {
@@ -48,7 +76,7 @@ const getNewMoviesFromTMDB = async (): Promise<Movie[]> => {
             });
 
 
-            console.log("The Response  Is: ", response)
+        console.log("The Response  Is: ", response)
 
         const movies = response.data.results.map((movie: any) => ({
             title: movie.title,
@@ -63,10 +91,15 @@ const getNewMoviesFromTMDB = async (): Promise<Movie[]> => {
             rating: movie.vote_average,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            genre: movie.genre_ids,
+            genres: movie.genre_ids,
             movie_actors: [],
             directors: [],
+
         }));
+
+        if (!movies || movies.length <= 0) {
+            await getNewMoviesFromTMDB();
+        }
 
         return movies;
     } catch (err: any) {
@@ -171,6 +204,7 @@ const enrichMovieWithGemini = async (movies: Movie): Promise<Movie> => {
 const getEnrichedMovies = async (): Promise<Movie[]> => {
     try {
         const tmdbMovies = await getNewMoviesFromTMDB();
+        console.log("The tmdb movies is : ", tmdbMovies)
         const enrichedMovies = await enrichMoviesWithGemini(tmdbMovies);
         return enrichedMovies;
     } catch (err: any) {

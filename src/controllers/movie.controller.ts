@@ -18,7 +18,8 @@
 
 import { Request, Response } from "express";
 import { client, redis } from "../utils/client.prisma";
-import { getNewMoviesFromTMDB, Movie } from "../services/geminiService";
+import { getEnrichedMovies, getNewMoviesFromTMDB, Movie } from "../services/geminiService";
+import { discoverAndSaveMovies } from "../services/movieService";
 
 // Retrieve a list of movies with pagination, filtering, and sorting
 export const getAllMovies = async (req: Request, res: Response): Promise<any> => {
@@ -282,7 +283,7 @@ export async function getNewMoviesFromTMDBController(req: Request, res: Response
             status: true,
         });
 
-        
+
     } catch (error) {
         console.error("Error in fetching movies:", error);
         return res.status(500).json({
@@ -290,4 +291,25 @@ export async function getNewMoviesFromTMDBController(req: Request, res: Response
             status: false,
         });
     }
+}
+
+export async function getEnrichedMoviesController(req: Request, res: Response): Promise<any> {
+    try {
+
+        await discoverAndSaveMovies()
+        return res.status(200).json({
+            message: "Movies enriched successfully",
+            data: "Movies enriched successfully",
+            status: true,
+        });
+
+    } catch (error) {
+        console.error("Error in enriched movie", error);
+        return res.status(500).json({
+            message: "Error in enriched movie",
+            status: false,
+        });
+    }
+
+
 }

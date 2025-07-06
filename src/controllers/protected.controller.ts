@@ -1,7 +1,7 @@
 //save movies in database
 
 import { number, string, z } from "zod";
-import { , enrichMovieWithGemini, Movie } from "../services/geminiService";
+import { enrichMovieWithGemini, Movie } from "../services/geminiService";
 import { client } from "../utils/client.prisma";
 
 
@@ -42,8 +42,8 @@ export async function postMoviesInDatabase(data: Movie[]) {
             const createdMovie = await client.movies.create({
                 data:{
                     title: response.title,
-                    duration: response.duration,
-                    rating: response.rating,
+                    duration: response.duration || 0,
+                    rating: response.rating || 0,
                     streaming: response.streaming || "" ,
                     country: response.country,
                     created_at: response.created_at,
